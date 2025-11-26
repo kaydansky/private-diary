@@ -2,6 +2,11 @@
 
 A modern, privacy-focused digital diary application that runs entirely in your browser. Your thoughts stay local, secure, and private.
 
+## 📸 Screenshot
+
+![Private Diary App](screenshot.png)
+*The clean, intuitive interface of Private Diary showing the calendar view and entry form*
+
 ## ✨ Features
 
 ### 🗄️ IndexedDB Storage
@@ -136,8 +141,7 @@ The app is built with:
 
 ## 📄 License
 
-- MIT License.
-- Created by Alexander Kaydansky (kaydansky@gmail.com) - 2025
+This project is released under the MIT License.
 
 ## 🤝 Contributing
 
