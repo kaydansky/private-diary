@@ -1,11 +1,20 @@
 # Private Diary 📖
 
-A modern, privacy-focused digital diary application that runs entirely in your browser. Your thoughts stay local, secure, and private.
+A PWA (Progressive Web App), privacy-focused digital diary application that runs entirely in your browser. Your thoughts stay local, secure, and private unless explicitly shared. Track your life daily, then recall your memories with ease, it's fun.
 
 ## 📸 Screenshot
 
 ![Private Diary App](screenshot.png)
-*The clean, intuitive interface of Private Diary showing the calendar view and entry form*
+- *The clean, intuitive interface of Private Diary showing the calendar view and entry form*
+
+## 🚀 Progressive Web App Benefits
+
+- **Works completely offline**: After your first visit, the app works without internet connection thanks to Service Worker technology
+- **Works offline forever**: Once cached, the app works offline permanently - no internet required
+- **Auto-updates when new version pushed**: When new versions are released, they automatically update on your next visit
+- **Works on phone without installing anything**: Just add to home screen for native app experience
+- **Native app experience**: Runs in fullscreen mode without browser UI when installed
+- **Cross-platform**: Works identically on Android, iOS, Windows, Mac, and Linux
 
 ## ✨ Features
 
@@ -78,11 +87,37 @@ A modern, privacy-focused digital diary application that runs entirely in your b
 
 ## 🚀 Getting Started
 
-1. **Open the app**: Simply open `diary.html` in any modern web browser
-2. **Start writing**: Click on today's date and hit "Add Entry"
-3. **Navigate**: Use the calendar to browse different dates
-4. **Search**: Use the search box to find specific entries
-5. **Customize**: Toggle between light and dark themes
+### 🌐 Online Access
+1. **Visit the app**: Go to https://kaydansky.github.io/private-diary-pwa
+2. **Start immediately**: No registration, downloads, or setup required
+3. **Your data stays local**: Even though the app is hosted online, all your diary entries are stored only on your device
+
+### 📱 Add to Home Screen
+**Android (Chrome/Edge):**
+1. Visit the app URL in your browser
+2. Tap the menu (⋮) → "Add to Home Screen" or "Install App"
+3. Confirm installation
+4. Launch from your home screen like any native app
+
+**iOS (Safari):**
+1. Visit the app URL in Safari
+2. Tap the Share button (□↗) → "Add to Home Screen"
+3. Confirm installation
+4. Launch from your home screen
+
+**Desktop (Chrome/Edge):**
+1. Visit the app URL
+2. Click the install icon (⊕) in the address bar
+3. Or go to Settings → "Install Private Diary"
+
+### 🔒 Privacy Note
+Even though the app is accessed via a public URL, **all your diary entries remain 100% private and local to your device**. The online hosting only delivers the app code - your personal data never leaves your device.
+
+### ✍️ Using the App
+1. **Start writing**: Click on today's date and hit "Add Entry"
+2. **Navigate**: Use the calendar to browse different dates
+3. **Search**: Use the search box to find specific entries
+4. **Customize**: Toggle between light and dark themes
 
 ## 💻 Technical Details
 
@@ -117,19 +152,12 @@ A modern, privacy-focused digital diary application that runs entirely in your b
 - **XSS protection**: All user input is properly escaped and sanitized
 - **Offline-first**: Works without internet connection
 
-## 📱 Mobile Installation
+## 💻 Local Development
 
-### Android
-1. Open Chrome browser
-2. Navigate to the diary app
-3. Tap menu (⋮) → "Add to Home Screen"
-4. Confirm installation
-
-### iOS
-1. Open Safari browser
-2. Navigate to the diary app
-3. Tap Share button → "Add to Home Screen"
-4. Confirm installation
+If you want to run the app locally:
+1. Download `index.html` from the repository
+2. Open it in any modern web browser
+3. The app works identically to the online version
 
 ## 🛠️ Development
 
