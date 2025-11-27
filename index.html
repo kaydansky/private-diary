@@ -834,6 +834,19 @@
                 this.hideAllMenus();
                 
                 if (!isVisible) {
+                    // Check if menu would go off-screen
+                    const rect = menuBtn.getBoundingClientRect();
+                    const menuHeight = 120; // Approximate menu height
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    
+                    if (spaceBelow < menuHeight) {
+                        menu.style.bottom = '100%';
+                        menu.style.top = 'auto';
+                    } else {
+                        menu.style.top = '100%';
+                        menu.style.bottom = 'auto';
+                    }
+                    
                     menu.classList.add('show');
                 }
             }
