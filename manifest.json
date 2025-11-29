@@ -1,0 +1,32 @@
+{
+  "name": "Private Diary",
+  "short_name": "Diary",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#667eea",
+  "description": "A private, local diary app",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/icons/icon.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/screenshot-wide.png",
+      "sizes": "975x933",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/assets/screenshots/screenshot-narrow.png",
+      "sizes": "385x606",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}
