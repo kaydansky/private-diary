@@ -1347,10 +1347,7 @@
             initEventListeners() {
                 this.prevMonthBtn.addEventListener('click', () => this.changeMonth(-1));
                 this.nextMonthBtn.addEventListener('click', () => {
-                    const today = new Date();
-                    const nextMonth = new Date(this.currentDate);
-                    nextMonth.setMonth(nextMonth.getMonth() + 1);
-                    if (nextMonth <= today) this.changeMonth(1);
+                    if (this.canNavigateToFuture(1)) this.changeMonth(1);
                 });
                 this.todayBtn.addEventListener('click', () => this.goToToday());
                 this.initSwipeAndWheelNavigation();
@@ -1538,14 +1535,18 @@
                 return div.innerHTML;
             }
 
-            // Navigate to previous or next month
-            changeMonth(direction) {
+            // Check if navigation to future month is allowed
+            canNavigateToFuture(direction) {
+                if (direction <= 0) return true;
                 const today = new Date();
                 const nextMonth = new Date(this.currentDate);
                 nextMonth.setMonth(nextMonth.getMonth() + direction);
-                
-                // Prevent navigation to future months
-                if (direction > 0 && nextMonth > today) return;
+                return nextMonth <= today;
+            }
+
+            // Navigate to previous or next month
+            changeMonth(direction) {
+                if (!this.canNavigateToFuture(direction)) return;
                 
                 this.currentDate.setMonth(this.currentDate.getMonth() + direction);
                 this.renderCalendar();
@@ -1570,9 +1571,7 @@
                 });
 
                 // Update next button state
-                const today = new Date();
-                const nextMonth = new Date(year, month + 1, 1);
-                this.nextMonthBtn.disabled = nextMonth > today;
+                this.nextMonthBtn.disabled = !this.canNavigateToFuture(1);
 
                 const firstDay = new Date(year, month, 1).getDay();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -2106,16 +2105,13 @@
 
             // Get image from IndexedDB
             async getImageFromIndexedDB(imageId) {
-                const db = await this.initDB();
                 return new Promise((resolve, reject) => {
-                    const transaction = db.transaction(['images'], 'readonly');
-                    const store = transaction.objectStore('images');
-                    const request = store.get(imageId);
-                    
-                    request.onsuccess = () => {
-                        resolve(request.result ? request.result.blob : null);
-                    };
-                    request.onerror = () => reject(request.error);
+                    this.performDBOperation('images', 'readonly', store => {
+                        const request = store.get(imageId);
+                        request.onsuccess = () => resolve(request.result ? request.result.blob : null);
+                        request.onerror = () => reject(request.error);
+                        return request;
+                    });
                 });
             }
 
@@ -2264,12 +2260,17 @@
                 this.renderCalendar();
             }
 
+            // Generic IndexedDB operation helper
+            async performDBOperation(storeName, mode, operation) {
+                const db = await this.initDB();
+                const transaction = db.transaction([storeName], mode);
+                const store = transaction.objectStore(storeName);
+                return await operation(store);
+            }
+
             // Delete image from IndexedDB
             async deleteImageFromIndexedDB(imageId) {
-                const db = await this.initDB();
-                const transaction = db.transaction(['images'], 'readwrite');
-                const store = transaction.objectStore('images');
-                await store.delete(imageId);
+                return this.performDBOperation('images', 'readwrite', store => store.delete(imageId));
             }
 
             // Toggle header menu visibility
@@ -2640,10 +2641,7 @@
                         const direction = diffX > 0 ? 1 : -1;
                         
                         // Prevent swipe to future months
-                        const today = new Date();
-                        const nextMonth = new Date(this.currentDate);
-                        nextMonth.setMonth(nextMonth.getMonth() + direction);
-                        if (direction > 0 && nextMonth > today) return;
+                        if (!this.canNavigateToFuture(direction)) return;
                         
                         this.animatePageTurn(direction);
                     }
@@ -2658,12 +2656,7 @@
                     const direction = e.deltaY > 0 ? 1 : -1;
                     
                     // Prevent wheel navigation to future months
-                    if (direction > 0) {
-                        const today = new Date();
-                        const nextMonth = new Date(this.currentDate);
-                        nextMonth.setMonth(nextMonth.getMonth() + 1);
-                        if (nextMonth > today) return;
-                    }
+                    if (!this.canNavigateToFuture(direction)) return;
                     
                     this.changeMonth(direction);
                 }, { passive: false });
