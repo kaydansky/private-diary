@@ -264,6 +264,17 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
 
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: var(--nav-btn-bg);
+        }
+
+        .nav-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
         .weekdays {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -1335,7 +1346,12 @@
             // Set up event listeners for UI interactions
             initEventListeners() {
                 this.prevMonthBtn.addEventListener('click', () => this.changeMonth(-1));
-                this.nextMonthBtn.addEventListener('click', () => this.changeMonth(1));
+                this.nextMonthBtn.addEventListener('click', () => {
+                    const today = new Date();
+                    const nextMonth = new Date(this.currentDate);
+                    nextMonth.setMonth(nextMonth.getMonth() + 1);
+                    if (nextMonth <= today) this.changeMonth(1);
+                });
                 this.todayBtn.addEventListener('click', () => this.goToToday());
                 this.initSwipeAndWheelNavigation();
                 this.addEntryBtn.addEventListener('click', () => this.showEntryForm());
@@ -1524,6 +1540,13 @@
 
             // Navigate to previous or next month
             changeMonth(direction) {
+                const today = new Date();
+                const nextMonth = new Date(this.currentDate);
+                nextMonth.setMonth(nextMonth.getMonth() + direction);
+                
+                // Prevent navigation to future months
+                if (direction > 0 && nextMonth > today) return;
+                
                 this.currentDate.setMonth(this.currentDate.getMonth() + direction);
                 this.renderCalendar();
             }
@@ -1546,12 +1569,16 @@
                     year: 'numeric'
                 });
 
+                // Update next button state
+                const today = new Date();
+                const nextMonth = new Date(year, month + 1, 1);
+                this.nextMonthBtn.disabled = nextMonth > today;
+
                 const firstDay = new Date(year, month, 1).getDay();
                 const daysInMonth = new Date(year, month + 1, 0).getDate();
                 const daysInPrevMonth = new Date(year, month, 0).getDate();
 
                 let html = '';
-                const today = new Date();
                 const todayStr = this.formatDateKey(today);
 
                 for (let i = firstDay - 1; i >= 0; i--) {
@@ -2611,6 +2638,13 @@
                     // Only trigger if horizontal swipe is dominant and significant
                     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
                         const direction = diffX > 0 ? 1 : -1;
+                        
+                        // Prevent swipe to future months
+                        const today = new Date();
+                        const nextMonth = new Date(this.currentDate);
+                        nextMonth.setMonth(nextMonth.getMonth() + direction);
+                        if (direction > 0 && nextMonth > today) return;
+                        
                         this.animatePageTurn(direction);
                     }
                     
@@ -2621,11 +2655,17 @@
                 // Mouse wheel navigation for desktop
                 this.calendarDays.addEventListener('wheel', (e) => {
                     e.preventDefault();
-                    if (e.deltaY > 0) {
-                        this.changeMonth(1); // Scroll down = next month
-                    } else {
-                        this.changeMonth(-1); // Scroll up = prev month
+                    const direction = e.deltaY > 0 ? 1 : -1;
+                    
+                    // Prevent wheel navigation to future months
+                    if (direction > 0) {
+                        const today = new Date();
+                        const nextMonth = new Date(this.currentDate);
+                        nextMonth.setMonth(nextMonth.getMonth() + 1);
+                        if (nextMonth > today) return;
                     }
+                    
+                    this.changeMonth(direction);
                 }, { passive: false });
             }
 
