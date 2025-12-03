@@ -1578,6 +1578,7 @@
                 const daysInPrevMonth = new Date(year, month, 0).getDate();
 
                 let html = '';
+                const today = new Date();
                 const todayStr = this.formatDateKey(today);
 
                 for (let i = firstDay - 1; i >= 0; i--) {
@@ -2361,15 +2362,23 @@
                 
                 const jsonData = JSON.stringify(combinedData, null, 2);
                 const blob = new Blob([jsonData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
+                const fileName = `diary-complete-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
                 
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `diary-complete-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName)] })) {
+                    try {
+                        const file = new File([blob], fileName, { type: 'application/json' });
+                        await navigator.share({
+                            title: 'Diary Export',
+                            files: [file]
+                        });
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            this.fallbackDownload(blob, fileName);
+                        }
+                    }
+                } else {
+                    this.fallbackDownload(blob, fileName);
+                }
             }
 
             // Export text entries as JSON
@@ -2410,15 +2419,23 @@
                 
                 const jsonData = JSON.stringify(dataToExport, null, 2);
                 const blob = new Blob([jsonData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
+                const fileName = `diary-text-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
                 
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `diary-text-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName)] })) {
+                    try {
+                        const file = new File([blob], fileName, { type: 'application/json' });
+                        await navigator.share({
+                            title: 'Diary Text Export',
+                            files: [file]
+                        });
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            this.fallbackDownload(blob, fileName);
+                        }
+                    }
+                } else {
+                    this.fallbackDownload(blob, fileName);
+                }
             }
 
             // Export images as ZIP (using JSZip would be ideal, but keeping it simple with JSON for now)
@@ -2450,15 +2467,25 @@
                             if (processed === images.length) {
                                 const jsonData = JSON.stringify(imageData, null, 2);
                                 const blob = new Blob([jsonData], { type: 'application/json' });
-                                const url = URL.createObjectURL(blob);
+                                const fileName = `diary-images-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
                                 
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `diary-images-${this.isMonthExport ? 'month-' : ''}${new Date().toISOString().split('T')[0]}.json`;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
+                                if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName)] })) {
+                                    try {
+                                        const file = new File([blob], fileName, { type: 'application/json' });
+                                        navigator.share({
+                                            title: 'Diary Images Export',
+                                            files: [file]
+                                        }).catch(err => {
+                                            if (err.name !== 'AbortError') {
+                                                this.fallbackDownload(blob, fileName);
+                                            }
+                                        });
+                                    } catch (err) {
+                                        this.fallbackDownload(blob, fileName);
+                                    }
+                                } else {
+                                    this.fallbackDownload(blob, fileName);
+                                }
                             }
                         };
                         reader.readAsDataURL(image.blob);
@@ -2598,6 +2625,18 @@
                 
                 this.themeIcon.className = newTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
                 this.hideHeaderMenu();
+            }
+
+            // Fallback download method when share is not available
+            fallbackDownload(blob, fileName) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
 
             // Initialize swipe and wheel navigation for calendar
