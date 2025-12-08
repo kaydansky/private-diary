@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Private Diary</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' fill='%23667eea' rx='20'/%3E%3Cpath d='M32 32h64v8H32zM32 48h48v8H32zM32 64h56v8H32zM32 80h40v8H32z' fill='white'/%3E%3C/svg%3E">
     <link rel="manifest" href="manifest.json">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"></noscript>
     <script>
         // Register service worker for offline functionality
         if ('serviceWorker' in navigator) {
@@ -1254,7 +1255,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.3.0/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.3.0/dist/umd/index.min.js" defer></script>
     <script>
         // Translations
         const translations = {
@@ -1500,12 +1501,13 @@
             // Initialize app after loading entries from IndexedDB
             async init() {
                 this.entries = {};
-                await this.loadEntriesForMonth(this.currentDate.getFullYear(), this.currentDate.getMonth());
-                this.initEventListeners();
-                this.initSearchIndex();
                 this.initTheme();
-                this.updateUI();
+                this.initEventListeners();
                 this.renderCalendar();
+                this.updateUI();
+                
+                // Load data asynchronously without blocking UI
+                this.loadEntriesForMonth(this.currentDate.getFullYear(), this.currentDate.getMonth());
             }
 
             // Initialize theme from localStorage or default to dark
@@ -1737,7 +1739,7 @@
                             this.entries[cursor.value.date] = cursor.value.entries;
                             cursor.continue();
                         } else {
-                            this.updateSearchIndex();
+                            this.renderCalendar();
                             resolve();
                         }
                     };
@@ -1759,46 +1761,12 @@
                         await store.put({ date, entries });
                     }
                 }
-                
-                this.updateSearchIndex();
             }
 
-            // Initialize search index with MiniSearch
-            initSearchIndex() {
-                this.searchIndex = new MiniSearch({
-                    fields: ['text', 'date'],
-                    storeFields: ['date', 'text', 'id'],
-                    searchOptions: {
-                        boost: { date: 2 },
-                        fuzzy: 0.2,
-                        prefix: true
-                    }
-                });
-
-                this.updateSearchIndex();
-            }
-
-            // Rebuild search index with current entries
-            updateSearchIndex() {
-                if (!this.searchIndex) return;
-                
-                const documents = [];
-                for (const [date, entries] of Object.entries(this.entries)) {
-                    entries.forEach(entry => {
-                        if (entry.text) {
-                            documents.push({
-                                id: entry.id,
-                                date: date,
-                                text: entry.text
-                            });
-                        }
-                    });
-                }
-
-                this.searchIndex.removeAll();
-                if (documents.length > 0) {
-                    this.searchIndex.addAll(documents);
-                }
+            // Lazy initialize search - only when needed
+            ensureSearchReady() {
+                if (this.searchReady) return;
+                this.searchReady = true;
             }
 
             // Handle search input and display results
@@ -1808,64 +1776,69 @@
                     return;
                 }
 
-                // Search in IndexedDB directly
-                const db = await this.initDB();
-                const results = await new Promise((resolve) => {
-                    const transaction = db.transaction(['entries'], 'readonly');
-                    const store = transaction.objectStore('entries');
-                    const request = store.getAll();
-                    
-                    request.onsuccess = () => {
-                        const matches = [];
-                        const lowerQuery = query.toLowerCase();
+                this.ensureSearchReady();
+                
+                // Debounce search
+                if (this.searchTimeout) clearTimeout(this.searchTimeout);
+                
+                this.searchTimeout = setTimeout(async () => {
+                    const db = await this.initDB();
+                    const results = await new Promise((resolve) => {
+                        const transaction = db.transaction(['entries'], 'readonly');
+                        const store = transaction.objectStore('entries');
+                        const request = store.getAll();
                         
-                        request.result.forEach(item => {
-                            item.entries.forEach(entry => {
-                                if (entry.text.toLowerCase().includes(lowerQuery)) {
-                                    matches.push({
-                                        date: item.date,
-                                        text: entry.text,
-                                        id: entry.id
-                                    });
-                                }
+                        request.onsuccess = () => {
+                            const matches = [];
+                            const lowerQuery = query.toLowerCase();
+                            
+                            request.result.forEach(item => {
+                                item.entries.forEach(entry => {
+                                    if (entry.text.toLowerCase().includes(lowerQuery)) {
+                                        matches.push({
+                                            date: item.date,
+                                            text: entry.text,
+                                            id: entry.id
+                                        });
+                                    }
+                                });
                             });
-                        });
-                        
-                        resolve(matches.slice(0, 10));
-                    };
-                });
-
-                if (results.length === 0) {
-                    this.searchResults.innerHTML = '<div class="no-entries">No results found</div>';
-                    this.searchResults.classList.remove('hidden');
-                    return;
-                }
-
-                this.searchResults.innerHTML = results.map(result => {
-                    const preview = result.text.substring(0, 100) + (result.text.length > 100 ? '...' : '');
-                    return `
-                        <div class="search-result-item" data-date="${result.date}">
-                            <div class="search-result-date">${this.formatDate(result.date)}</div>
-                            <div class="search-result-text">${this.escapeHtml(preview)}</div>
-                        </div>
-                    `;
-                }).join('');
-
-                this.searchResults.querySelectorAll('.search-result-item').forEach(item => {
-                    item.addEventListener('click', async () => {
-                        const date = item.dataset.date;
-                        const [year, month, day] = date.split('-').map(Number);
-                        this.currentDate = new Date(year, month - 1, day);
-                        this.selectedDate = date;
-                        await this.loadEntriesForMonth(year, month - 1);
-                        this.renderCalendar();
-                        this.showEntries(date);
-                        this.searchInput.value = '';
-                        this.searchResults.classList.add('hidden');
+                            
+                            resolve(matches.slice(0, 10));
+                        };
                     });
-                });
 
-                this.searchResults.classList.remove('hidden');
+                    if (results.length === 0) {
+                        this.searchResults.innerHTML = '<div class="no-entries">No results found</div>';
+                        this.searchResults.classList.remove('hidden');
+                        return;
+                    }
+
+                    this.searchResults.innerHTML = results.map(result => {
+                        const preview = result.text.substring(0, 100) + (result.text.length > 100 ? '...' : '');
+                        return `
+                            <div class="search-result-item" data-date="${result.date}">
+                                <div class="search-result-date">${this.formatDate(result.date)}</div>
+                                <div class="search-result-text">${this.escapeHtml(preview)}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    this.searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                        item.addEventListener('click', async () => {
+                            const date = item.dataset.date;
+                            const [year, month, day] = date.split('-').map(Number);
+                            this.currentDate = new Date(year, month - 1, day);
+                            this.selectedDate = date;
+                            await this.loadEntriesForMonth(year, month - 1);
+                            this.showEntries(date);
+                            this.searchInput.value = '';
+                            this.searchResults.classList.add('hidden');
+                        });
+                    });
+
+                    this.searchResults.classList.remove('hidden');
+                }, 300);
             }
 
             // Escape HTML characters to prevent XSS
@@ -2412,24 +2385,42 @@
                 });
             }
 
-            // Load images for an entry
+            // Load images for an entry with lazy loading
             async loadEntryImages(entryId, imageUrls) {
                 const container = document.getElementById(`images-${entryId}`);
                 if (!container) return;
                 
+                // Use IntersectionObserver for lazy loading
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const imageUrl = img.dataset.imageUrl;
+                            const imageId = imageUrl.replace('image-', '');
+                            
+                            this.getImageFromIndexedDB(imageId).then(blob => {
+                                if (blob) {
+                                    img.src = URL.createObjectURL(blob);
+                                    img.style.opacity = '1';
+                                }
+                            });
+                            
+                            observer.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: '50px' });
+                
                 for (const imageUrl of imageUrls) {
-                    const imageId = imageUrl.replace('image-', '');
-                    const blob = await this.getImageFromIndexedDB(imageId);
-                    if (blob) {
-                        const img = document.createElement('img');
-                        img.className = 'image-thumbnail';
-                        img.src = URL.createObjectURL(blob);
-                        img.onclick = () => this.showImageModal(imageUrl);
-                        
-                        // Add delete functionality
-                        this.addImageDeleteHandlers(img, imageUrl, entryId);
-                        container.appendChild(img);
-                    }
+                    const img = document.createElement('img');
+                    img.className = 'image-thumbnail';
+                    img.dataset.imageUrl = imageUrl;
+                    img.style.opacity = '0.3';
+                    img.style.transition = 'opacity 0.3s';
+                    img.onclick = () => this.showImageModal(imageUrl);
+                    
+                    this.addImageDeleteHandlers(img, imageUrl, entryId);
+                    container.appendChild(img);
+                    observer.observe(img);
                 }
             }
 
